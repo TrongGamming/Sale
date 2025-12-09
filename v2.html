@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tool cho bạn</title>
+    <link rel="icon" href="./icon.png" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100vw;
+      }
+      .main {
+        margin-top: 50px;
+        padding: 10px 30px;
+        width: 800px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+      }
+      .header {
+        text-align: center;
+      }
+      .main .content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      #sheetSelect {
+        width: 100%;
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+      #selectedProductList,
+      #productList {
+        max-height: 250px;
+        overflow-y: auto;
+        padding: 5px;
+        list-style: none;
+        margin-bottom: 5px;
+      }
+      .product-item,
+      .selected-product-item {
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+      }
+      #productList .product-item:hover {
+        background-color: #f0f0f0;
+        cursor: pointer;
+      }
+      #content__selectProduct,
+      #content__selectRow {
+        display: flex;
+        gap: 20px;
+      }
+      #content__selectProduct,
+      #content__selectSheet,
+      #content__selectRow,
+      #selectProduct__editValue {
+        display: none;
+      }
+
+      #selectProduct__editValue {
+        margin-top: 10px;
+      }
+
+      button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background-color: #28a745;
+        color: white;
+        cursor: pointer;
+      }
+      .product-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: #f7f7f7;
+        margin-bottom: 6px;
+      }
+
+      .product-item .remove-btn {
+        padding: 4px 10px;
+        border: none;
+        background: #ff4d4f;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input {
+        width: 100%;
+        padding: 10px 20px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+      .selectRow__item {
+        flex: 1;
+      }
+      @media only screen and (max-width: 600px) {
+        #content__selectProduct,
+        #content__selectRow {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="container">
+      <main class="main">
+        <h2 class="header">Tool dành cho bạn tôi :)))</h2>
+        <div class="content">
+          <div class="content__inputExcel">
+            <label for="inputExcel"
+              ><strong>Nhập file excel của bạn vào nhá:</strong></label
+            >
+            <input type="file" id="inputExcel" accept=".xlsx, .csv" />
+          </div>
+          <div id="content__selectSheet">
+            <label for="sheetSelect"
+              ><strong>Chọn sheet bạn muốn xem dữ liệu:</strong></label
+            >
+            <select id="sheetSelect">
+              <option value="" disabled selected>-----Chọn sheet-----</option>
+            </select>
+          </div>
+          <div id="content__selectRow">
+            <div class="selectRow__item">
+              <label for="nameCol"><strong>Col tên hàng</strong></label>
+              <input
+                onchange="handleUpdateRowCol()"
+                type="number"
+                id="nameCol"
+                value="2"
+              />
+            </div>
+            <div class="selectRow__item">
+              <label for="nameRow"><strong>Row tên hàng</strong></label>
+              <input
+                onchange="handleUpdateRowCol"
+                type="number"
+                id="nameRow"
+                value="8"
+              />
+            </div>
+            <div class="selectRow__item">
+              <label for="valueCol"><strong>Col giá trị cần sửa</strong></label>
+              <input
+                onchange="handleUpdateRowCol"
+                type="number"
+                id="valueCol"
+                value="12"
+              />
+            </div>
+          </div>
+          <div id="content__selectProduct">
+            <div
+              style="
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                padding: 15px;
+                flex: 1;
+              "
+            >
+              <label for="sheetSelect"><strong>Chọn sản phẩm:</strong></label>
+              <input type="text" id="searchProduct" />
+              <ul id="productList"></ul>
+              <div id="selectProduct__editValue">
+                <h4
+                  id="productSelecting"
+                  style="color: #90caf9; margin: 5px 0"
+                ></h4>
+                <label style="display: block" for="editValue"
+                  ><strong>Chỉnh sửa giá trị:</strong></label
+                >
+                <input type="text" id="editValue" />
+                <button id="applyValue" style="margin-top: 5px">Áp dụng</button>
+              </div>
+            </div>
+            <span
+              style="width: 1px; height: 100%; background-color: #ccc"
+            ></span>
+            <div
+              style="
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                padding: 15px;
+                flex: 1;
+              "
+            >
+              <label for="sheetSelect"><strong>Sản phẩm đã chọn</strong></label>
+              <ul id="selectedProductList"></ul>
+              <button id="btnSaveExcel">Lưu file excel</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </section>
+    <script>
+      const inputExcel = document.getElementById("inputExcel");
+      const sheetSection = document.getElementById("sheetSelect");
+      const searchProduct = document.getElementById("searchProduct");
+      const btnSaveExcel = document.getElementById("btnSaveExcel");
+      const applyValue = document.getElementById("applyValue");
+      const editValue = document.getElementById("editValue");
+
+      var workbook;
+      var worksheet;
+      var nameCol = document.getElementById("nameCol").value;
+      var valueCol = document.getElementById("valueCol").value;
+      var nameRow = document.getElementById("nameRow").value;
+      nameCol = parseInt(nameCol);
+      valueCol = parseInt(valueCol);
+      nameRow = parseInt(nameRow);
+      var products = [];
+      var productValue;
+
+      const handleUpdateRowCol = () => {
+        nameCol = parseInt(document.getElementById("nameCol").value);
+        valueCol = parseInt(document.getElementById("valueCol").value);
+        nameRow = parseInt(document.getElementById("nameRow").value);
+      };
+
+      inputExcel.addEventListener("change", async (e) => {
+        if (e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        const arrayBuffer = await file.arrayBuffer();
+        workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        sheetSection.innerHTML = `
+              <option value="" disabled selected>-----Chọn sheet-----</option>
+        `;
+        workbook.worksheets.forEach((sheet) => {
+          const option = document.createElement("option");
+          console.log(sheet);
+          option.value = sheet.id;
+          option.textContent = sheet.name;
+          sheetSection.appendChild(option);
+        });
+        const contentSelectSheet = document.getElementById(
+          "content__selectSheet"
+        );
+        const contentSelectRow = document.getElementById("content__selectRow");
+        contentSelectSheet.style.display = "block";
+        contentSelectRow.style.display = "flex";
+      });
+
+      sheetSection.addEventListener("change", (e) => {
+        const selectedValue = e.target.value;
+        worksheet = workbook.getWorksheet(parseInt(selectedValue));
+        const contentSelectProduct = document.getElementById(
+          "content__selectProduct"
+        );
+        contentSelectProduct.style.display = "flex";
+      });
+
+      searchProduct.addEventListener("change", (e) => {
+        const col = worksheet.getColumn(nameCol);
+        const listProduct = document.getElementById("productList");
+        listProduct.innerHTML = "";
+        let found = false;
+
+        col.eachCell((cell, rowNumber) => {
+          if (rowNumber > nameRow && cell.value.includes(e.target.value)) {
+            found = true;
+            const listItem = document.createElement("li");
+            listItem.textContent = cell.value;
+            listItem.classList.add("product-item");
+            listItem.textContent = cell.value;
+            listItem.addEventListener("click", () => {
+              const selectProductEditValue = document.getElementById(
+                "selectProduct__editValue"
+              );
+              selectProductEditValue.style.display = "block";
+              selectProductEditValue.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+              selectProductEditValue.focus();
+              const exists = products.find((p) => p.name === cell.value);
+              editValue.value =
+                typeof worksheet.getRow(rowNumber).getCell(valueCol).value !==
+                "object"
+                  ? worksheet.getRow(rowNumber).getCell(valueCol).value
+                  : 0;
+              const productSelecting =
+                document.getElementById("productSelecting");
+              productSelecting.textContent = `Đang chỉnh sửa: ${cell.value}`;
+              if (!exists) {
+                productValue = {
+                  name: cell.value,
+                  value: editValue.value,
+                  rowNumber: rowNumber,
+                };
+              }
+            });
+            listProduct.appendChild(listItem);
+          }
+        });
+        if (!found) {
+          listProduct.innerHTML = "<li>Không tìm thấy sản phẩm</li>";
+        }
+      });
+
+      document.getElementById("applyValue").addEventListener("click", () => {
+        const editValue = document.getElementById("editValue").value;
+        const selectedProductName = document.querySelector(
+          "#productList .selected"
+        )?.textContent;
+        if (selectedProductName) {
+          const product = products.find((p) => p.name === selectedProductName);
+          if (product) {
+            product.value = editValue;
+            renderSelectedProducts();
+          }
+        }
+      });
+      const renderSelectedProducts = () => {
+        const selectedProductList = document.getElementById(
+          "selectedProductList"
+        );
+        selectedProductList.innerHTML = "";
+        products.forEach((product) => {
+          const listItem = document.createElement("li");
+          listItem.classList.add("selected-product-item");
+          listItem.innerHTML = `<div class="product-item">
+            <span class="product-name"><strong>${product.name}</strong>: ${product.value}</span>
+            <button class="remove-btn" onclick="removeProduct('${product.name}')">Xóa</button>
+            </div>
+            `;
+          selectedProductList.appendChild(listItem);
+        });
+      };
+      btnSaveExcel.addEventListener("click", async () => {
+        products.forEach((product) => {
+          const col = worksheet.getColumn(nameCol);
+          col.eachCell((cell, rowNumber) => {
+            if (rowNumber > nameRow && cell.value === product.name) {
+              worksheet.getRow(rowNumber).getCell(valueCol).value =
+                product.value;
+            }
+          });
+        });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        saveAs(blob, "updated_excel.xlsx");
+      });
+      const removeProduct = (productName) => {
+        products = products.filter((p) => p.name !== productName);
+        renderSelectedProducts();
+      };
+
+      applyValue.onclick = () => {
+        productValue.value = editValue.value;
+        if (!products.includes(productValue)) {
+          products.push(productValue);
+        }
+        renderSelectedProducts();
+      };
+    </script>
+  </body>
+</html>
