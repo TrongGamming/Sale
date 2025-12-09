@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tool Tồn Kho Excel - Dạng List</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        padding: 20px;
+        max-width: 900px;
+        margin: 0 auto;
+        background-color: #f4f4f9;
+      }
+      .container {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      h2 {
+        color: #333;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+      }
+
+      /* Layout chia 2 cột */
+      .grid-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .left-panel,
+      .right-panel {
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 8px;
+        background: #fff;
+      }
+      .right-panel {
+        background-color: #ffffeb;
+        border-color: #e6e600;
+      }
+
+      label {
+        font-weight: bold;
+        display: block;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      button.primary {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 15px;
+      }
+      button.primary:hover {
+        background-color: #0056b3;
+      }
+
+      button.success {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      button.success:hover {
+        background-color: #218838;
+      }
+
+      button.danger {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        width: auto;
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+
+      .result-box {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #eee;
+        margin-top: 10px;
+      }
+      .result-item {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .result-item:hover {
+        background-color: #e9ecef;
+      }
+
+      /* Table Style cho Todo List */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 13px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🛠️ Tool Cập Nhật Tồn Kho (V2)</h2>
+
+      <div
+        style="
+          background: #e9ecef;
+          padding: 10px;
+          border-radius: 5px;
+          margin-bottom: 20px;
+        "
+      >
+        <label>1. Chọn File Excel:</label>
+        <input type="file" id="uploadFile" accept=".xlsx, .xls" />
+        <p
+          id="fileStatus"
+          style="color: blue; font-style: italic; margin: 5px 0 0 0"
+        ></p>
+
+        <div id="sheetSection" style="display: none; margin-top: 10px">
+          <label>2. Chọn Sheet:</label>
+          <select id="sheetSelect"></select>
+
+          <label style="margin-top: 10px"
+            >⚠️ Cấu hình cột "Tồn Cuối": (Mặc định 12 - Hãy chỉnh nếu
+            sai)</label
+          >
+          <input
+            type="number"
+            id="colIndexInput"
+            value="12"
+            style="width: 80px"
+          />
+          <small
+            >A=1, B=2,... L=12. Hãy mở file Excel đếm xem cột số lượng nằm ở vị
+            trí nào.</small
+          >
+        </div>
+      </div>
+
+      <div class="grid-container" id="mainWorkspace" style="display: none">
+        <div class="left-panel">
+          <h3 style="margin-top: 0">🔍 Tìm & Thêm</h3>
+          <input
+            type="text"
+            id="searchName"
+            placeholder="Nhập tên hàng (VD: Bàn chải)..."
+            onkeyup="if(event.key === 'Enter') searchProduct()"
+          />
+          <button
+            class="primary"
+            onclick="searchProduct()"
+            style="margin-top: 5px"
+          >
+            Tìm kiếm
+          </button>
+
+          <div id="searchResult" class="result-box"></div>
+
+          <div
+            id="inputForm"
+            style="
+              display: none;
+              margin-top: 15px;
+              padding-top: 10px;
+              border-top: 2px dashed #ccc;
+            "
+          >
+            <p>
+              <b>Đang chọn:</b>
+              <span id="selectedName" style="color: #007bff"></span>
+            </p>
+            <p>
+              Dòng: <span id="selectedRow"></span> | Cũ:
+              <span id="oldValue"></span>
+            </p>
+
+            <label>Nhập Số lượng Mới:</label>
+            <input type="number" id="newValue" placeholder="Nhập số..." />
+            <button class="success" onclick="addToQueue()">
+              ⬇️ Thêm vào danh sách sửa
+            </button>
+          </div>
+        </div>
+
+        <div class="right-panel">
+          <h3 style="margin-top: 0">
+            📋 Danh sách chờ cập nhật (<span id="countPending">0</span>)
+          </h3>
+          <div style="max-height: 300px; overflow-y: auto">
+            <table id="todoTable">
+              <thead>
+                <tr>
+                  <th>Dòng</th>
+                  <th>Tên</th>
+                  <th>Mới</th>
+                  <th>Xóa</th>
+                </tr>
+              </thead>
+              <tbody id="todoBody"></tbody>
+            </table>
+          </div>
+          <p
+            id="emptyMsg"
+            style="text-align: center; color: #888; margin-top: 20px"
+          >
+            Chưa có mục nào.
+          </p>
+
+          <button
+            class="primary"
+            onclick="processAndExport()"
+            style="background-color: #6f42c1; font-size: 16px"
+          >
+            💾 LƯU & TẢI FILE VỀ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let workbook = null;
+      let currentSheet = null;
+      let COL_NAME = 2;
+      let COL_QTY_INDEX = 12; 
+
+      // Danh sách chờ (Mảng chứa các object thay đổi)
+      let pendingChanges = [];
+
+      // 1. Upload & Load File
+      document
+        .getElementById("uploadFile")
+        .addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const buffer = event.target.result;
+            workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(buffer);
+
+            const sheetSelect = document.getElementById("sheetSelect");
+            sheetSelect.innerHTML =
+              '<option value="">-- Chọn Sheet --</option>';
+            workbook.eachSheet((sheet, id) => {
+              const opt = document.createElement("option");
+              opt.value = id;
+              opt.text = sheet.name;
+              sheetSelect.appendChild(opt);
+            });
+
+            document.getElementById(
+              "fileStatus"
+            ).innerText = `Đã tải: ${file.name}`;
+            document.getElementById("sheetSection").style.display = "block";
+          };
+          reader.readAsArrayBuffer(file);
+        });
+
+      // 2. Chọn Sheet
+      document
+        .getElementById("sheetSelect")
+        .addEventListener("change", function () {
+          if (!this.value) return;
+          currentSheet = workbook.getWorksheet(parseInt(this.value));
+          document.getElementById("mainWorkspace").style.display = "grid";
+
+          // Reset danh sách chờ khi đổi sheet
+          pendingChanges = [];
+          renderTodoList();
+          document.getElementById("searchResult").innerHTML = "";
+          document.getElementById("inputForm").style.display = "none";
+        });
+
+      // 3. Tìm kiếm
+      function searchProduct() {
+        const keyword = document
+          .getElementById("searchName")
+          .value.toLowerCase();
+        if (!keyword) return;
+
+        const resultBox = document.getElementById("searchResult");
+        resultBox.innerHTML = "";
+
+        COL_QTY_INDEX = parseInt(
+          document.getElementById("colIndexInput").value
+        );
+
+        currentSheet.eachRow((row, rowNumber) => {
+          if (rowNumber < 5) return; // Bỏ qua header
+          const nameCell = row.getCell(COL_NAME).value;
+          const name = nameCell ? nameCell.toString() : "";
+
+          if (name.toLowerCase().includes(keyword)) {
+            const div = document.createElement("div");
+            div.className = "result-item";
+            div.innerHTML = `<b>Dòng ${rowNumber}:</b> ${name}`;
+            div.onclick = () => selectItem(rowNumber, name);
+            resultBox.appendChild(div);
+          }
+        });
+
+        if (resultBox.innerHTML === "")
+          resultBox.innerHTML =
+            '<div style="padding:10px">Không tìm thấy!</div>';
+      }
+
+      // 4. Chọn 1 món để sửa
+      function selectItem(rowNumber, name) {
+        // Lấy giá trị hiện tại
+        const cellVal = currentSheet
+          .getRow(rowNumber)
+          .getCell(COL_QTY_INDEX).value;
+        const displayVal =
+          cellVal && cellVal.result !== undefined
+            ? cellVal.result
+            : cellVal || 0;
+
+        document.getElementById("selectedName").innerText = name;
+        document.getElementById("selectedRow").innerText = rowNumber;
+        document.getElementById("oldValue").innerText = displayVal;
+        document.getElementById("newValue").value = displayVal; // Gợi ý số cũ
+        document.getElementById("newValue").focus();
+
+        document.getElementById("inputForm").style.display = "block";
+      }
+
+      // 5. Thêm vào danh sách chờ (To-Do List)
+      function addToQueue() {
+        const row = document.getElementById("selectedRow").innerText;
+        const name = document.getElementById("selectedName").innerText;
+        const val = document.getElementById("newValue").value;
+
+        if (val === "") {
+          alert("Chưa nhập số lượng!");
+          return;
+        }
+
+        // Kiểm tra xem dòng này đã có trong danh sách chưa
+        const existingIndex = pendingChanges.findIndex(
+          (item) => item.row === row
+        );
+
+        if (existingIndex >= 0) {
+          // Nếu có rồi thì cập nhật số mới
+          pendingChanges[existingIndex].newVal = val;
+        } else {
+          // Chưa có thì thêm mới
+          pendingChanges.push({
+            row: row,
+            name: name,
+            newVal: val,
+          });
+        }
+
+        renderTodoList();
+        document.getElementById("inputForm").style.display = "none";
+        document.getElementById("searchName").value = "";
+        document.getElementById("searchResult").innerHTML = "";
+        document.getElementById("searchName").focus(); // Focus lại ô tìm kiếm để làm món tiếp theo
+      }
+
+      // 6. Hiển thị danh sách Todo
+      function renderTodoList() {
+        const tbody = document.getElementById("todoBody");
+        tbody.innerHTML = "";
+        document.getElementById("countPending").innerText =
+          pendingChanges.length;
+
+        if (pendingChanges.length === 0) {
+          document.getElementById("emptyMsg").style.display = "block";
+        } else {
+          document.getElementById("emptyMsg").style.display = "none";
+
+          // Vẽ bảng
+          pendingChanges.forEach((item, index) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                    <td>${item.row}</td>
+                    <td>${item.name.substring(0, 20)}...</td>
+                    <td style="font-weight:bold; color:green;">${
+                      item.newVal
+                    }</td>
+                    <td><button class="danger" onclick="removeFromQueue(${index})">X</button></td>
+                `;
+            tbody.appendChild(tr);
+          });
+        }
+      }
+
+      // 7. Xóa khỏi danh sách chờ
+      function removeFromQueue(index) {
+        pendingChanges.splice(index, 1);
+        renderTodoList();
+      }
+
+      // 8. Xử lý Batch (Ghi tất cả vào file và tải về)
+      async function processAndExport() {
+        if (pendingChanges.length === 0) {
+          alert("Danh sách trống! Hãy thêm thay đổi trước.");
+          return;
+        }
+
+        if (
+          !confirm(
+            `Bạn có chắc muốn lưu ${pendingChanges.length} thay đổi này vào file?`
+          )
+        )
+          return;
+
+        // Duyệt qua danh sách và ghi vào workbook
+        pendingChanges.forEach((item) => {
+          const row = currentSheet.getRow(parseInt(item.row));
+          const cell = row.getCell(COL_QTY_INDEX);
+          cell.value = parseFloat(item.newVal); // Lưu dạng số
+        });
+
+        // Xuất file
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        saveAs(blob, `Ton_Kho_Update_${new Date().getTime()}.xlsx`);
+
+        alert("Đã xuất file thành công!");
+        pendingChanges = []; // Reset sau khi lưu
+        renderTodoList();
+      }
+    </script>
+  </body>
+</html>
