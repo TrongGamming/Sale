@@ -277,7 +277,10 @@
         let found = false;
 
         col.eachCell((cell, rowNumber) => {
-          if (rowNumber > nameRow && cell.value.includes(e.target.value)) {
+          if (
+            rowNumber > nameRow &&
+            cell.value.toLowerCase().includes(e.target.value.toLowerCase())
+          ) {
             found = true;
             const listItem = document.createElement("li");
             listItem.textContent = cell.value;
